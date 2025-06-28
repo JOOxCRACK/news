@@ -1,49 +1,47 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <title>الدفع عبر Stripe</title>
+  <meta charset="utf-8" />
+  <title>الدفع الآمن</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Stripe.js -->
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <!-- تنسيق بسيط -->
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 400px;
-      margin: 40px auto;
-      padding: 20px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      background: #f9f9f9;
+    body{
+      background:#111; color:#eee; font-family:Tahoma, Arial, sans-serif;
+      display:flex; justify-content:center; align-items:center; height:100vh;
     }
-    input, button {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      font-size: 16px;
+    .box{
+      background:#1e1e1e; padding:28px; border-radius:10px; width:320px;
+      border:1px solid #444;
     }
-    #card-element {
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background: white;
+    input,button,#card-element{
+      width:100%; padding:10px; margin-top:10px; border-radius:6px;
+      border:1px solid #666; background:#222; color:#eee; font-size:15px;
     }
-    #payment-result {
-      margin-top: 15px;
-      min-height: 20px;
-    }
+    #card-element{ background:#fff;color:#000;} /* بطاقة بلون أبيض */
+    button{background:#0a84ff; border:none; cursor:pointer;}
+    button:hover{background:#006dda}
+    #payment-result{margin-top:12px; font-size:13px; white-space:pre-wrap}
   </style>
 </head>
 <body>
-  <h2>ادفع الآن</h2>
+  <div class="box">
+    <h2 style="margin-top:0">ادفع الآن</h2>
 
-  <form id="payment-form">
-    <input id="cardholder-name" placeholder="اسم صاحب البطاقة" required />
-    <input id="email" type="email" placeholder="البريد الإلكتروني" required />
-    <div id="card-element"></div>
-    <button id="card-button">ادفع</button>
+    <form id="payment-form">
+      <input id="cardholder-name" placeholder="اسم صاحب البطاقة" required/>
+      <input id="email" type="email" placeholder="البريد الإلكتروني" required/>
+      <div id="card-element"><!-- Stripe Element يظهر هنا --></div>
+      <button id="card-button" type="submit">ادفع</button>
+    </form>
+
     <div id="payment-result"></div>
-  </form>
+  </div>
 
-  <script src="https://js.stripe.com/v3/"></script>
+  <!-- ملف العميل -->
   <script src="client.js"></script>
 </body>
 </html>
