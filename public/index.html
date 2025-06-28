@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stripe Payment</title>
+</head>
+<body>
+  <h1>Pay Now</h1>
+  <form id="payment-form">
+    <input id="cardholder-name" placeholder="Cardholder name" />
+    <div id="card-element"></div>
+    <button id="card-button">Pay</button>
+    <div id="payment-result"></div>
+  </form>
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="client.js"></script>
+</body>
+</html>
