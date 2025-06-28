@@ -64,8 +64,8 @@ form.addEventListener("submit", async (e) => {
       return;
     }
 
-    // 4‑ج) Payment succeeded
-    log("✅ تم الدفع بنجاح!\nPaymentIntent ID: " + data.id);
+    // 4‑ج) Payment succeeded — عرض كامل الاستجابة فى الـ <pre>
+    log("✅ تم الدفع بنجاح!\n\n" + JSON.stringify(data, null, 2));
   } catch (err) {
     log("❌ " + err.message);
   } finally {
