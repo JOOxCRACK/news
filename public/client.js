@@ -1,4 +1,4 @@
-// client.js – handles Stripe payment flow with detailed decline messages
+// client.js – Stripe with detailed console logging
 
 // 1) Replace with your real publishable key
 const stripe = Stripe("pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE");
@@ -13,17 +13,16 @@ const form     = document.getElementById("payment-form");
 const resultEl = document.getElementById("payment-result");
 const payBtn   = document.getElementById("card-button");
 
-const log = (txt) => (resultEl.textContent = txt);
-const enableBtn = () => (payBtn.disabled = false);
+const logUI = (txt) => (resultEl.textContent = txt);
+const enableBtn  = () => (payBtn.disabled = false);
 const disableBtn = () => (payBtn.disabled = true);
 
-// 4) Form submission handler
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   disableBtn();
-  log("⏳ جارى إنشاء وسيلة الدفع…");
+  logUI("⏳ جارى إنشاء وسيلة الدفع…");
 
-  // 4‑أ) Create payment method
+  // A) Create payment method
   const { error, paymentMethod } = await stripe.createPaymentMethod({
     type: "card",
     card: cardElement,
@@ -34,21 +33,21 @@ form.addEventListener("submit", async (e) => {
   });
 
   if (error) {
-    log("❌ " + error.message);
+    logUI("❌ " + error.message);
+    console.error("Stripe createPaymentMethod error", error);
     enableBtn();
     return;
   }
 
-  // 4‑ب) Send to backend (form‑urlencoded)
+  // B) Call backend to create PaymentIntent
   const body = new URLSearchParams({
     payment_method: paymentMethod.id,
-    amount       : 100,           // 1 € = 100 سنت
+    amount       : 100,
     currency     : "eur",
     description  : "Store Purchase",
     email        : document.getElementById("email").value,
   });
 
-  log("🔄 جارى الاتصال بالخادم…");
   try {
     const res  = await fetch("/create-payment-intent", {
       method : "POST",
@@ -57,36 +56,30 @@ form.addEventListener("submit", async (e) => {
     });
 
     const data = await res.json();
+    console.log("Stripe response", data); // ⬅️ Full JSON visible فقط في F12
 
-    /*
-      إذا API backend أرجع error
-    */
     if (data.error) {
-      log("❌ " + data.error);
+      logUI("❌ " + data.error);
       enableBtn();
       return;
     }
 
-    /*
-      Stripe PaymentIntent response – تحقق من الحالة والأخطاء
-    */
     if (data.status === "succeeded") {
-      log("✅ تم الدفع بنجاح!\n\n" + JSON.stringify(data, null, 2));
+      logUI("✅ تم الدفع بنجاح!");
     } else {
-      // حاول قراءة كود الرفض التفصيلي
       const decline = data.last_payment_error?.decline_code || data.last_payment_error?.code;
-      const msg     = data.last_payment_error?.message || "تم رفض البطاقة";
-      let humanMsg  = msg;
+      let humanMsg  = data.last_payment_error?.message || "تم رفض البطاقة";
       if (decline === "insufficient_funds") humanMsg = "❌ البطاقة لا تحتوي على رصيد كاف";
       if (decline === "lost_card")          humanMsg = "❌ البطاقة مفقودة";
       if (decline === "stolen_card")        humanMsg = "❌ البطاقة مسروقة";
       if (decline === "incorrect_cvc")      humanMsg = "❌ رمز CVC غير صحيح";
       if (decline === "expired_card")       humanMsg = "❌ انتهت صلاحية البطاقة";
 
-      log(humanMsg + "\n\nالتفاصيل:\n" + JSON.stringify(data, null, 2));
+      logUI(humanMsg);
     }
   } catch (err) {
-    log("❌ " + err.message);
+    logUI("❌ " + err.message);
+    console.error(err);
   } finally {
     enableBtn();
   }
