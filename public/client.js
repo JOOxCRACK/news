@@ -1,5 +1,5 @@
 // client.js
-const stripe = Stripe("pk_test_12345"); // Replace with your real pk_live
+const stripe = Stripe("pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE"); // Replace with your real pk_live
 const elements = stripe.elements();
 const card = elements.create("card");
 card.mount("#card-element");
