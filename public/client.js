@@ -1,90 +1,74 @@
-// client.js – Stripe integration (اسم + إيميل + طباعة كاملة في Console)
-// --------------------------------------------------------------
-// 1) ضع مفتاحك العلني هنا
+// client.js – طباعة الاستجابة كاملة فى Console بدون اختصار
+//------------------------------------------------------------------
+// ضع مفتاحك العلني بدلاً من pk_live_REPLACE_ME
 const stripe = Stripe("pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE");
 
-// 2) تهيئة Stripe Elements
-const elements    = stripe.elements();
-const cardElement = elements.create("card", { classes: { base: "p-2" } });
-cardElement.mount("#card-element");
+// 1) Stripe Elements
+const elements = stripe.elements();
+const card     = elements.create("card", { classes:{ base:"p-2" } });
+card.mount("#card-element");
 
-// 3) مراجع لعناصر النموذج
-const form      = document.getElementById("payment-form");
-const payBtn    = document.getElementById("card-button");
-const resultBox = document.getElementById("payment-result");
+// 2) عناصر الواجهة
+const form   = document.getElementById("payment-form");
+const result = document.getElementById("payment-result");
+const btn    = document.getElementById("card-button");
+const logUI  = (txt)=> (result.textContent = txt);
 
-const ui = {
-  log  : (msg) => (resultBox.textContent = msg),
-  lock : ()    => (payBtn.disabled = true),
-  free : ()    => (payBtn.disabled = false),
-};
-
-// 4) إرسال النموذج
-form.addEventListener("submit", async (e) => {
+form.addEventListener("submit", async e => {
   e.preventDefault();
-  ui.lock();
-  ui.log("⏳ إنشاء وسيلة الدفع…");
+  btn.disabled = true;
+  logUI("⏳ إنشاء وسيلة الدفع…");
 
-  // 4-أ) إنشاء payment_method
+  // إنشاء payment_method
   const { error, paymentMethod } = await stripe.createPaymentMethod({
-    type: "card",
-    card: cardElement,
-    billing_details: {
+    type:"card", card,
+    billing_details:{
       name : document.getElementById("cardholder-name").value,
       email: document.getElementById("email").value,
-    },
+    }
   });
 
-  if (error) {
-    ui.log("❌ " + error.message);
-    console.error("Stripe createPaymentMethod error", error);
-    ui.free();
-    return;
-  }
+  if(error){ logUI("❌ "+error.message); btn.disabled=false; return; }
 
-  // 4-ب) نطلب PaymentIntent من السيرفر
+  // إرسال للباك-إند
   const body = new URLSearchParams({
-    payment_method: paymentMethod.id,
-    amount       : 100,          // 1 € = 100 سنت
-    currency     : "eur",
-    description  : "Store Purchase",
-    email        : document.getElementById("email").value,
+    payment_method:paymentMethod.id,
+    amount:100,
+    currency:"eur",
+    description:"Store Purchase",
+    email:document.getElementById("email").value,
   });
 
-  try {
-    const res  = await fetch("/create-payment-intent", {
-      method : "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body   : body.toString(),
+  try{
+    const res   = await fetch("/create-payment-intent",{
+      method:"POST",
+      headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body:body.toString()
     });
 
-    const data = await res.json();
-    console.dir(data, { depth: null }); // 🔍 طباعة مفصلة فى الـ Console
+    // ← نحصل على النصّ الخام ثم نطبعه قبل أى تحليل
+    const raw  = await res.text();
+    console.log("----- Stripe RAW Response -----\n"+raw);
 
-    if (data.error) {
-      ui.log("❌ " + data.error);
-      ui.free();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch(parseErr){
+      logUI("❌ فشل فى قراءة الرد");
+      btn.disabled=false;
       return;
     }
 
-    // 4-ج) فحص النتيجة
-    if (data.status === "succeeded") {
-      ui.log("✅ تم الدفع بنجاح!\nانظر التفاصيل فى Console");
-    } else {
-      const decline = data.last_payment_error?.decline_code || data.last_payment_error?.code;
-      let   message = data.last_payment_error?.message      || "تم رفض البطاقة";
-      if (decline === "insufficient_funds") message = "❌ البطاقة لا تحتوي على رصيد كاف";
-      if (decline === "lost_card")          message = "❌ البطاقة مفقودة";
-      if (decline === "stolen_card")        message = "❌ البطاقة مسروقة";
-      if (decline === "incorrect_cvc")      message = "❌ رمز CVC غير صحيح";
-      if (decline === "expired_card")       message = "❌ انتهت صلاحية البطاقة";
-
-      ui.log(message);
+    // إظهار النتيجة للمستخدم باختصار فقط
+    if(data.error){
+      logUI("❌ "+data.error.message);
+    }else if(data.status === "succeeded"){
+      logUI("✅ تم الدفع بنجاح");
+    }else{
+      logUI("ℹ️ تحقق من Console للتفاصيل");
     }
-  } catch (err) {
-    ui.log("❌ " + err.message);
-    console.error(err);
-  } finally {
-    ui.free();
+  }catch(err){
+    logUI("❌ "+err.message);
+  }finally{
+    btn.disabled=false;
   }
 });
