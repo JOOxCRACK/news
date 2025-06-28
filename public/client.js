@@ -1,74 +1,77 @@
-// client.js – طباعة الاستجابة كاملة فى Console بدون اختصار
-//------------------------------------------------------------------
-// ضع مفتاحك العلني بدلاً من pk_live_REPLACE_ME
+// client.js – Stripe 3‑D Secure Flow (يُظهر الرد كامل في Console)
+// ------------------------------------------------------------------
+// 1) ضع مفتاحك العلني هنا ↓
 const stripe = Stripe("pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE");
 
-// 1) Stripe Elements
+// 2) Stripe Elements إعداد
 const elements = stripe.elements();
 const card     = elements.create("card", { classes:{ base:"p-2" } });
 card.mount("#card-element");
 
-// 2) عناصر الواجهة
+// 3) عناصر الـ DOM
 const form   = document.getElementById("payment-form");
 const result = document.getElementById("payment-result");
 const btn    = document.getElementById("card-button");
-const logUI  = (txt)=> (result.textContent = txt);
+const ui     = { log:t=>result.textContent=t, lock:()=>btn.disabled=true, free:()=>btn.disabled=false };
 
-form.addEventListener("submit", async e => {
+// 4) عند إرسال النموذج
+form.addEventListener("submit", async (e)=>{
   e.preventDefault();
-  btn.disabled = true;
-  logUI("⏳ إنشاء وسيلة الدفع…");
+  ui.lock();
+  ui.log("⏳ إنشاء PaymentIntent…");
 
-  // إنشاء payment_method
-  const { error, paymentMethod } = await stripe.createPaymentMethod({
-    type:"card", card,
-    billing_details:{
-      name : document.getElementById("cardholder-name").value,
-      email: document.getElementById("email").value,
-    }
-  });
-
-  if(error){ logUI("❌ "+error.message); btn.disabled=false; return; }
-
-  // إرسال للباك-إند
+  // أ) إنشاء PaymentIntent على السيرفر (confirm:false)
   const body = new URLSearchParams({
-    payment_method:paymentMethod.id,
-    amount:100,
-    currency:"eur",
-    description:"Store Purchase",
-    email:document.getElementById("email").value,
+    amount: 100,            // 1 € = 100 سنت (غيّر ما تشاء)
+    currency: "eur",
+    description: "Store Purchase"
   });
 
-  try{
-    const res   = await fetch("/create-payment-intent",{
-      method:"POST",
-      headers:{"Content-Type":"application/x-www-form-urlencoded"},
-      body:body.toString()
+  let client_secret;
+  try {
+    const resRaw = await fetch("/create-payment-intent", {
+      method : "POST",
+      headers: { "Content-Type":"application/x-www-form-urlencoded" },
+      body   : body.toString()
     });
-
-    // ← نحصل على النصّ الخام ثم نطبعه قبل أى تحليل
-    const raw  = await res.text();
-    console.log("----- Stripe RAW Response -----\n"+raw);
-
-    let data;
-    try { data = JSON.parse(raw); }
-    catch(parseErr){
-      logUI("❌ فشل فى قراءة الرد");
-      btn.disabled=false;
+    const resTxt = await resRaw.text();
+    console.log("--- RAW PI Response ---\n"+resTxt);
+    const resJson = JSON.parse(resTxt);
+    if(resJson.error){
+      ui.log("❌ "+resJson.error.message);
+      ui.free();
       return;
     }
-
-    // إظهار النتيجة للمستخدم باختصار فقط
-    if(data.error){
-      logUI("❌ "+data.error.message);
-    }else if(data.status === "succeeded"){
-      logUI("✅ تم الدفع بنجاح");
-    }else{
-      logUI("ℹ️ تحقق من Console للتفاصيل");
-    }
-  }catch(err){
-    logUI("❌ "+err.message);
-  }finally{
-    btn.disabled=false;
+    client_secret = resJson.client_secret;
+  } catch(err){
+    ui.log("❌ فشل فى الحصول على PaymentIntent");
+    console.error(err);
+    ui.free();
+    return;
   }
+
+  // ب) تأكيد الدفع + 3‑D Secure إن لزم
+  ui.log("🔄 تأكيد الدفع… (قد يطلب التحقق)");
+  const { error, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
+    payment_method: {
+      card,
+      billing_details: {
+        name : document.getElementById("cardholder-name").value,
+        email: document.getElementById("email").value
+      }
+    }
+  });
+
+  // ج) عرض النتيجة
+  if(error){
+    console.dir(error, {depth:null});
+    ui.log("❌ "+error.message);
+  }else if(paymentIntent.status === "succeeded"){
+    console.dir(paymentIntent, {depth:null});
+    ui.log("✅ تم الدفع بنجاح!\nتحقق من Console للتفاصيل.");
+  }else{
+    console.dir(paymentIntent, {depth:null});
+    ui.log("ℹ️ حالة الدفع: "+paymentIntent.status+" – تحقق من Console.");
+  }
+  ui.free();
 });
