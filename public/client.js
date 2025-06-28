@@ -56,7 +56,7 @@ form.addEventListener("submit", async (e) => {
     });
 
     const data = await res.json();
-    console.log("Stripe response", data); // ⬅️ Full JSON visible فقط في F12
+    console.dir(data, { depth: null }); // طباعة كل المستويات دون طيّ // ⬅️ Full JSON visible فقط في F12
 
     if (data.error) {
       logUI("❌ " + data.error);
@@ -65,7 +65,8 @@ form.addEventListener("submit", async (e) => {
     }
 
     if (data.status === "succeeded") {
-      logUI("✅ تم الدفع بنجاح!");
+      logUI("✅ تم الدفع بنجاح!
+شاهد التفاصيل في الـ Console (F12)");
     } else {
       const decline = data.last_payment_error?.decline_code || data.last_payment_error?.code;
       let humanMsg  = data.last_payment_error?.message || "تم رفض البطاقة";
