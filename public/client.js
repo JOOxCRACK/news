@@ -1,28 +1,31 @@
-// client.js – Stripe with detailed console logging
-
-// 1) Replace with your real publishable key
+// client.js – Stripe integration (اسم + إيميل + طباعة كاملة في Console)
+// --------------------------------------------------------------
+// 1) ضع مفتاحك العلني هنا
 const stripe = Stripe("pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE");
 
-// 2) Stripe Elements setup
-const elements = stripe.elements();
+// 2) تهيئة Stripe Elements
+const elements    = stripe.elements();
 const cardElement = elements.create("card", { classes: { base: "p-2" } });
 cardElement.mount("#card-element");
 
-// 3) Helper elements
-const form     = document.getElementById("payment-form");
-const resultEl = document.getElementById("payment-result");
-const payBtn   = document.getElementById("card-button");
+// 3) مراجع لعناصر النموذج
+const form      = document.getElementById("payment-form");
+const payBtn    = document.getElementById("card-button");
+const resultBox = document.getElementById("payment-result");
 
-const logUI = (txt) => (resultEl.textContent = txt);
-const enableBtn  = () => (payBtn.disabled = false);
-const disableBtn = () => (payBtn.disabled = true);
+const ui = {
+  log  : (msg) => (resultBox.textContent = msg),
+  lock : ()    => (payBtn.disabled = true),
+  free : ()    => (payBtn.disabled = false),
+};
 
+// 4) إرسال النموذج
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  disableBtn();
-  logUI("⏳ جارى إنشاء وسيلة الدفع…");
+  ui.lock();
+  ui.log("⏳ إنشاء وسيلة الدفع…");
 
-  // A) Create payment method
+  // 4-أ) إنشاء payment_method
   const { error, paymentMethod } = await stripe.createPaymentMethod({
     type: "card",
     card: cardElement,
@@ -33,16 +36,16 @@ form.addEventListener("submit", async (e) => {
   });
 
   if (error) {
-    logUI("❌ " + error.message);
+    ui.log("❌ " + error.message);
     console.error("Stripe createPaymentMethod error", error);
-    enableBtn();
+    ui.free();
     return;
   }
 
-  // B) Call backend to create PaymentIntent
+  // 4-ب) نطلب PaymentIntent من السيرفر
   const body = new URLSearchParams({
     payment_method: paymentMethod.id,
-    amount       : 100,
+    amount       : 100,          // 1 € = 100 سنت
     currency     : "eur",
     description  : "Store Purchase",
     email        : document.getElementById("email").value,
@@ -56,32 +59,32 @@ form.addEventListener("submit", async (e) => {
     });
 
     const data = await res.json();
-    console.dir(data, { depth: null }); // طباعة كل المستويات دون طيّ // ⬅️ Full JSON visible فقط في F12
+    console.dir(data, { depth: null }); // 🔍 طباعة مفصلة فى الـ Console
 
     if (data.error) {
-      logUI("❌ " + data.error);
-      enableBtn();
+      ui.log("❌ " + data.error);
+      ui.free();
       return;
     }
 
+    // 4-ج) فحص النتيجة
     if (data.status === "succeeded") {
-      logUI("✅ تم الدفع بنجاح!
-شاهد التفاصيل في الـ Console (F12)");
+      ui.log("✅ تم الدفع بنجاح!\nانظر التفاصيل فى Console");
     } else {
       const decline = data.last_payment_error?.decline_code || data.last_payment_error?.code;
-      let humanMsg  = data.last_payment_error?.message || "تم رفض البطاقة";
-      if (decline === "insufficient_funds") humanMsg = "❌ البطاقة لا تحتوي على رصيد كاف";
-      if (decline === "lost_card")          humanMsg = "❌ البطاقة مفقودة";
-      if (decline === "stolen_card")        humanMsg = "❌ البطاقة مسروقة";
-      if (decline === "incorrect_cvc")      humanMsg = "❌ رمز CVC غير صحيح";
-      if (decline === "expired_card")       humanMsg = "❌ انتهت صلاحية البطاقة";
+      let   message = data.last_payment_error?.message      || "تم رفض البطاقة";
+      if (decline === "insufficient_funds") message = "❌ البطاقة لا تحتوي على رصيد كاف";
+      if (decline === "lost_card")          message = "❌ البطاقة مفقودة";
+      if (decline === "stolen_card")        message = "❌ البطاقة مسروقة";
+      if (decline === "incorrect_cvc")      message = "❌ رمز CVC غير صحيح";
+      if (decline === "expired_card")       message = "❌ انتهت صلاحية البطاقة";
 
-      logUI(humanMsg);
+      ui.log(message);
     }
   } catch (err) {
-    logUI("❌ " + err.message);
+    ui.log("❌ " + err.message);
     console.error(err);
   } finally {
-    enableBtn();
+    ui.free();
   }
 });
