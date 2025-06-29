@@ -1,19 +1,13 @@
-// server.js – Stripe عبر بروكسي HTTP مخصّص (confirm + off_session)
-
+// server.js – Stripe بدون بروكسي (confirm + off_session)
+// -------------------------------------------------------
 const express    = require("express");
 const bodyParser = require("body-parser");
 const path       = require("path");
-const { HttpsProxyAgent } = require("https-proxy-agent");
 
-// بيانات البروكسي المُرسَلة من المستخدم
-const proxyUrl = "http://rigordimagiba49_gmail_com:HazeProxy123@la.residential.rayobyte.com:8000";
-const agent    = new HttpsProxyAgent(proxyUrl);
-
-// Stripe مع تعيين httpAgent للبروكسي
+// Stripe من غير httpAgent
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY, {
-  httpAgent: agent,
   maxNetworkRetries: 2,
-  timeout: 30000 // 30 ثانية
+  timeout: 30000 // 30s
 });
 
 const app = express();
@@ -21,16 +15,26 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+// الصفحة الرئيسية
 app.get("/", (_, res) =>
   res.sendFile(path.join(__dirname, "public", "index.html"))
 );
 
+/* POST /create-payment-intent
+   – يؤكد الدفع فورًا off_session
+   – لا يستخدم بروكسي الآن
+*/
 app.post("/create-payment-intent", async (req, res) => {
-  const { amount, currency = "eur", description = "Store Purchase", payment_method } = req.body;
+  const {
+    amount,
+    currency = "eur",
+    description = "Store Purchase",
+    payment_method
+  } = req.body;
+
   try {
-    if (!payment_method) {
+    if (!payment_method)
       return res.status(400).json({ error: "payment_method missing" });
-    }
 
     const intent = await stripe.paymentIntents.create({
       amount: Number(amount),
@@ -44,8 +48,7 @@ app.post("/create-payment-intent", async (req, res) => {
     res.json({
       id: intent.id,
       status: intent.status,
-      charges: intent.charges.data,
-      client_secret: intent.client_secret
+      charges: intent.charges.data
     });
   } catch (err) {
     res.status(400).json({
