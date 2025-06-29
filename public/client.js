@@ -1,31 +1,31 @@
-// client.js – إرسال payment_method للسيرفر (Confirm + Off-Session)
-// --------------------------------------------------------------------
+// client.js – إرسال payment_method فقط، السيرفر يؤكّد off-session
+// ---------------------------------------------------------------
 
-// 1) استبدل هذا المفتاح بمفتاحك العلني الحقيقي
+// 1) ضع مفتاحك العلني الحقيقى هنا
 const stripe = Stripe("pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE");
 
 // 2) Stripe Elements
 const elements = stripe.elements();
-const card     = elements.create("card", { classes: { base: "p-2" } });
+const card = elements.create("card", { classes: { base: "p-2" } });
 card.mount("#card-element");
 
-// 3) عناصر واجهة المستخدم
-const form      = document.getElementById("payment-form");
-const resultBox = document.getElementById("payment-result");
-const payBtn    = document.getElementById("card-button");
-const ui        = {
-  log  : (t) => (resultBox.textContent = t),
-  lock : ()  => (payBtn.disabled = true),
-  free : ()  => (payBtn.disabled = false)
+// 3) DOM helpers
+const form   = document.getElementById("payment-form");
+const output = document.getElementById("payment-result");
+const button = document.getElementById("card-button");
+const ui = {
+  log : (t) => (output.textContent = t),
+  lock: ()  => (button.disabled = true),
+  free: ()  => (button.disabled = false)
 };
 
-// 4) عند إرسال النموذج
+// 4) Handle submit
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   ui.lock();
   ui.log("⏳ إنشاء payment_method…");
 
-  // (أ) إنشاء payment_method بالاسم والإيميل
+  /* أ) إنشاء PaymentMethod */
   const { error, paymentMethod } = await stripe.createPaymentMethod({
     type: "card",
     card,
@@ -41,43 +41,34 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
-  // (ب) استدعاء السيرفر لتأكيد الدفع off_session
+  /* ب) استدعاء السيرفر لتأكيد PaymentIntent */
   const body = new URLSearchParams({
     payment_method: paymentMethod.id,
-    amount       : 100,      // مثال: 1 € = 100 سنت
-    currency     : "eur",
-    description  : "Store Purchase"
+    amount: 100,                // 1 € (غيّره كما تريد)
+    currency: "eur",
+    description: "Store Purchase"
   });
 
   try {
-    const res  = await fetch("/create-payment-intent", {
+    const resRaw = await fetch("/create-payment-intent", {
       method : "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body   : body.toString()
     });
 
-    const raw  = await res.text();
-    console.log("--- RAW PaymentIntent Response ---\n" + raw);
+    const raw = await resRaw.text();
+    console.log("--- RAW PaymentIntent Response ---\\n" + raw);
 
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch (parseErr) {
-      ui.log("❌ فشل فى قراءة الرد");
-      ui.free();
-      return;
-    }
+    const data = JSON.parse(raw);
 
-    // (ج) عرض نتيجة مختصرة للمستخدم
+    /* ج) عرض نتيجة مختصرة */
     if (data.status === "succeeded") {
       ui.log("✅ تم الدفع بنجاح!");
     } else if (
       data.code === "authentication_required" ||
       data.decline_code === "authentication_required"
     ) {
-      ui.log(
-        "⚠️ البطاقة تتطلب تحقق إضافي (3-D Secure) ولا يمكن إكمالها فى الخلفية. يرجى تجربة بطاقة أخرى."
-      );
+      ui.log("⚠️ البطاقة تتطلب تحقق إضافي (3-D Secure) ولا يمكن إكمالها فى الخلفية.");
     } else if (data.message) {
       ui.log("❌ " + data.message);
     } else {
