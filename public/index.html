@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <title>بوابة الدفع بـ Stripe</title>
+  <title>بوابة دفع Stripe</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://js.stripe.com/v3/"></script>
   <style>
@@ -11,7 +11,7 @@
     #card-element{background:#fff}
     button{background:#23a6d5;color:#fff;border:none;cursor:pointer}
     button:hover{background:#1b8ab8}
-    pre{background:#fff;padding:10px;border:1px solid #ddd;border-radius:6px;height:70px;overflow:auto}
+    pre{background:#fff;padding:10px;border:1px solid #ddd;border-radius:6px;height:80px;overflow:auto}
   </style>
 </head>
 <body>
@@ -23,7 +23,7 @@
     <input id="address-line1"   placeholder="العنوان (الشارع)" required />
     <input id="city"            placeholder="المدينة" required />
     <input id="postal_code"     placeholder="الرمز البريدي" required />
-    <input id="country"         placeholder="الدولة (مثال EG, US)" required />
+    <input id="country"         placeholder="الدولة (EG, US…)" required />
     <div id="card-element"></div>
     <button id="card-button">ادفع</button>
     <pre id="payment-result"></pre>
