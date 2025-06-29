@@ -1,25 +1,30 @@
-// server.js – Stripe PaymentIntent (confirm + off_session) لإلغاء 3‑D Secure
-// -------------------------------------------------------------------
+// server.js – Stripe عبر بروكسي HTTP مخصّص (confirm + off_session)
+
 const express    = require("express");
-const stripe     = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const bodyParser = require("body-parser");
 const path       = require("path");
-const app        = express();
+const ProxyAgent = require("https-proxy-agent");
 
+// بيانات البروكسي المُرسَلة من المستخدم ↓
+const proxyUrl = "http://rigordimagiba49_gmail_com:HazeProxy123@la.residential.rayobyte.com:8000";
+const agent    = new ProxyAgent(proxyUrl);
+
+// Stripe مع تعيين httpAgent بالبروكسي
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY, {
+  httpAgent: agent,
+  networkRetries: 2,
+  timeout: 30000 // 30s
+});
+
+const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());            // لقبول JSON أيضًا
+app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// الصفحة الرئيسية
 app.get("/", (_, res) =>
   res.sendFile(path.join(__dirname, "public", "index.html"))
 );
 
-/*
-  POST /create-payment-intent
-  – يستقبل amount, currency, description, payment_method
-  – يؤكد الدفع مباشرة off_session (لا يفتح 3-D Secure)
-*/
 app.post("/create-payment-intent", async (req, res) => {
   const { amount, currency = "eur", description = "Store Purchase", payment_method } = req.body;
   try {
@@ -32,16 +37,11 @@ app.post("/create-payment-intent", async (req, res) => {
       currency,
       description,
       payment_method,
-      confirm: true,       // تأكيد فورى
-      off_session: true    // يمنع 3‑D Secure
+      confirm: true,
+      off_session: true
     });
 
-    res.json({
-      id:            intent.id,
-      status:        intent.status,
-      charges:       intent.charges.data,
-      client_secret: intent.client_secret
-    });
+    res.json({ id: intent.id, status: intent.status, charges: intent.charges.data });
   } catch (err) {
     res.status(400).json({
       message       : err.message,
