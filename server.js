@@ -1,4 +1,5 @@
-// server.js – Stripe manual PaymentIntent (no proxy, no captcha)
+// server.js – manual PaymentIntent flow (confirm=false, no proxy)
+// ----------------------------------------------------------------
 const express    = require("express");
 const bodyParser = require("body-parser");
 const path       = require("path");
@@ -12,13 +13,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// Home page
-app.get("/", (_, res) =>
-  res.sendFile(path.join(__dirname, "public", "index.html"))
-);
+app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
-/* POST /create-payment-intent
-   – Creates PaymentIntent without confirming (on-session confirmation in client) */
+/* Create PaymentIntent without confirmation */
 app.post("/create-payment-intent", async (req, res) => {
   try {
     const {
@@ -34,9 +31,9 @@ app.post("/create-payment-intent", async (req, res) => {
       country
     } = req.body;
 
-    if (!payment_method) {
-      return res.status(400).json({ error: "payment_method missing" });
-    }
+    if(!payment_method) return res.status(400).json({ error:"payment_method missing" });
+
+    const addressFilled = line1 && country; // require at least street + country
 
     const intent = await stripe.paymentIntents.create({
       amount: Number(amount),
@@ -44,30 +41,27 @@ app.post("/create-payment-intent", async (req, res) => {
       description,
       payment_method,
       confirmation_method: "manual",
-      confirm: false,                 // confirm on client
+      confirm: false,
       receipt_email: email,
-      shipping: {
-        name,
-        address: { line1, city, postal_code, country }
-      },
+      ...(addressFilled && {
+        shipping: {
+          name,
+          address: {
+            line1,
+            city,
+            postal_code,
+            country
+          }
+        }
+      }),
       payment_method_options: {
         card: { request_three_d_secure: "any" }
       }
     });
 
-    res.json({
-      client_secret: intent.client_secret,
-      id: intent.id,
-      status: intent.status
-    });
+    res.json({ client_secret:intent.client_secret, id:intent.id, status:intent.status });
   } catch (err) {
-    res.status(400).json({
-      message: err.message,
-      type: err.type,
-      code: err.code,
-      decline_code: err.decline_code,
-      payment_intent: err.payment_intent
-    });
+    res.status(400).json({ message:err.message, code:err.code, type:err.type });
   }
 });
 
