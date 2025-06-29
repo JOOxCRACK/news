@@ -2,46 +2,33 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <title>الدفع الآمن</title>
+  <title>بوابة الدفع بـ Stripe</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Stripe.js -->
   <script src="https://js.stripe.com/v3/"></script>
-
-  <!-- تنسيق بسيط -->
   <style>
-    body{
-      background:#111; color:#eee; font-family:Tahoma, Arial, sans-serif;
-      display:flex; justify-content:center; align-items:center; height:100vh;
-    }
-    .box{
-      background:#1e1e1e; padding:28px; border-radius:10px; width:320px;
-      border:1px solid #444;
-    }
-    input,button,#card-element{
-      width:100%; padding:10px; margin-top:10px; border-radius:6px;
-      border:1px solid #666; background:#222; color:#eee; font-size:15px;
-    }
-    #card-element{ background:#fff;color:#000;} /* بطاقة بلون أبيض */
-    button{background:#0a84ff; border:none; cursor:pointer;}
-    button:hover{background:#006dda}
-    #payment-result{margin-top:12px; font-size:13px; white-space:pre-wrap}
+    body{font-family:tahoma,arial;padding:24px;max-width:420px;margin:auto;background:#f7f7f7}
+    input,button,#card-element{width:100%;padding:10px;margin-top:10px;border-radius:6px;border:1px solid #ccc;font-size:15px}
+    #card-element{background:#fff}
+    button{background:#23a6d5;color:#fff;border:none;cursor:pointer}
+    button:hover{background:#1b8ab8}
+    pre{background:#fff;padding:10px;border:1px solid #ddd;border-radius:6px;height:70px;overflow:auto}
   </style>
 </head>
 <body>
-  <div class="box">
-    <h2 style="margin-top:0">ادفع الآن</h2>
+  <h2>ادفع الآن</h2>
 
-    <form id="payment-form">
-      <input id="cardholder-name" placeholder="اسم صاحب البطاقة" required/>
-      <input id="email" type="email" placeholder="البريد الإلكتروني" required/>
-      <div id="card-element"><!-- Stripe Element يظهر هنا --></div>
-      <button id="card-button" type="submit">ادفع</button>
-    </form>
+  <form id="payment-form">
+    <input id="cardholder-name"  placeholder="اسم حامل البطاقة" required />
+    <input id="email"           placeholder="البريد الإلكتروني" required />
+    <input id="address-line1"   placeholder="العنوان (الشارع)" required />
+    <input id="city"            placeholder="المدينة" required />
+    <input id="postal_code"     placeholder="الرمز البريدي" required />
+    <input id="country"         placeholder="الدولة (مثال EG, US)" required />
+    <div id="card-element"></div>
+    <button id="card-button">ادفع</button>
+    <pre id="payment-result"></pre>
+  </form>
 
-    <div id="payment-result"></div>
-  </div>
-
-  <!-- ملف العميل -->
   <script src="client.js"></script>
 </body>
 </html>
