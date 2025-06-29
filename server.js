@@ -1,13 +1,12 @@
 // server.js – Stripe بدون بروكسي (confirm + off_session)
-// -------------------------------------------------------
 const express    = require("express");
 const bodyParser = require("body-parser");
 const path       = require("path");
 
-// Stripe من غير httpAgent
+// ضع مفتاحك السري في متغيّر البيئة STRIPE_SECRET_KEY
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY, {
   maxNetworkRetries: 2,
-  timeout: 30000 // 30s
+  timeout: 30000
 });
 
 const app = express();
@@ -15,26 +14,16 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// الصفحة الرئيسية
+/* الصفحة الرئيسية */
 app.get("/", (_, res) =>
   res.sendFile(path.join(__dirname, "public", "index.html"))
 );
 
-/* POST /create-payment-intent
-   – يؤكد الدفع فورًا off_session
-   – لا يستخدم بروكسي الآن
-*/
+/* إنشاء وتأكيد PaymentIntent */
 app.post("/create-payment-intent", async (req, res) => {
-  const {
-    amount,
-    currency = "eur",
-    description = "Store Purchase",
-    payment_method
-  } = req.body;
-
+  const { amount, currency = "usd", description = "Store Purchase", payment_method } = req.body;
   try {
-    if (!payment_method)
-      return res.status(400).json({ error: "payment_method missing" });
+    if (!payment_method) return res.status(400).json({ error: "payment_method missing" });
 
     const intent = await stripe.paymentIntents.create({
       amount: Number(amount),
@@ -45,11 +34,7 @@ app.post("/create-payment-intent", async (req, res) => {
       off_session: true
     });
 
-    res.json({
-      id: intent.id,
-      status: intent.status,
-      charges: intent.charges.data
-    });
+    res.json({ id:intent.id, status:intent.status, charges:intent.charges.data });
   } catch (err) {
     res.status(400).json({
       message       : err.message,
