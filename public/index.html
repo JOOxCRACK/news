@@ -1,34 +1,87 @@
+<!-- public/index.html -->
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>بوابة دفع Stripe</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <title>Stripe Payment</title>
   <script src="https://js.stripe.com/v3/"></script>
-  <style>
-    body{font-family:tahoma,arial;padding:24px;max-width:420px;margin:auto;background:#f7f7f7}
-    input,button,#card-element{width:100%;padding:10px;margin-top:10px;border-radius:6px;border:1px solid #ccc;font-size:15px}
-    #card-element{background:#fff}
-    button{background:#23a6d5;color:#fff;border:none;cursor:pointer}
-    button:hover{background:#1b8ab8}
-    pre{background:#fff;padding:10px;border:1px solid #ddd;border-radius:6px;height:80px;overflow:auto}
-  </style>
 </head>
 <body>
   <h2>ادفع الآن</h2>
-
   <form id="payment-form">
-    <input id="cardholder-name"  placeholder="اسم حامل البطاقة" required />
-    <input id="email"           placeholder="البريد الإلكتروني" required />
-    <input id="address-line1"   placeholder="العنوان (الشارع)" required />
-    <input id="city"            placeholder="المدينة" required />
-    <input id="postal_code"     placeholder="الرمز البريدي" required />
-    <input id="country"         placeholder="الدولة (EG, US…)" required />
-    <div id="card-element"></div>
-    <button id="card-button">ادفع</button>
-    <pre id="payment-result"></pre>
+    <input type="text" name="name" placeholder="الاسم الكامل" required><br>
+    <input type="email" name="email" placeholder="البريد الإلكتروني" required><br>
+    <input type="text" name="line1" placeholder="العنوان" required><br>
+    <input type="text" name="city" placeholder="المدينة" required><br>
+    <input type="text" name="postal_code" placeholder="الرمز البريدي" required><br>
+    <input type="text" name="country" placeholder="الدولة (مثال: US)" required><br>
+    <div id="card-element"></div><br>
+    <button type="submit">ادفع</button>
   </form>
 
-  <script src="client.js"></script>
+  <pre id="result"></pre>
+
+  <script>
+    const stripe = Stripe("pk_live_REPLACE_ME"); // غيّر المفتاح هنا
+    const elements = stripe.elements();
+    const cardElement = elements.create("card");
+    cardElement.mount("#card-element");
+
+    const form = document.getElementById("payment-form");
+    const result = document.getElementById("result");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(form);
+      const name = formData.get("name");
+      const email = formData.get("email");
+      const line1 = formData.get("line1");
+      const city = formData.get("city");
+      const postal_code = formData.get("postal_code");
+      const country = formData.get("country");
+
+      const { paymentMethod, error } = await stripe.createPaymentMethod({
+        type: "card",
+        card: cardElement,
+        billing_details: { name, email }
+      });
+
+      if (error) {
+        result.textContent = "❌ Payment method error: " + error.message;
+        return;
+      }
+
+      const res = await fetch("/create-payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: 100, // المبلغ بالسنت
+          description: "Store Purchase",
+          payment_method: paymentMethod.id,
+          name,
+          email,
+          line1,
+          city,
+          postal_code,
+          country
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        result.textContent = "❌ Payment error: " + JSON.stringify(data, null, 2);
+        return;
+      }
+
+      const confirm = await stripe.confirmCardPayment(data.client_secret);
+      if (confirm.error) {
+        result.textContent = "❌ Confirm error: " + confirm.error.message;
+      } else {
+        result.textContent = "✅ Payment status: " + confirm.paymentIntent.status;
+      }
+    });
+  </script>
 </body>
 </html>
