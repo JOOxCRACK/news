@@ -54,7 +54,10 @@ app.post("/create-payment-intent", async (req, res) => {
         }
       },
       payment_method_options: {
-        card: { request_three_d_secure: "any" }
+        card: {
+          request_three_d_secure: "automatic" // only if issuer requires
+        }
+      }
       }
     });
 
