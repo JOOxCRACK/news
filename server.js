@@ -1,4 +1,4 @@
-// server.js – manual creation, client-side confirmation (Stripe JS)
+// server.js – create PaymentIntent (manual) + client confirmation
 //---------------------------------------------------------------
 const express    = require("express");
 const bodyParser = require("body-parser");
@@ -13,25 +13,20 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// home page
-app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("/", (_, res) =>
+  res.sendFile(path.join(__dirname, "public", "index.html"))
+);
 
 /* POST /create-payment-intent
-   - Creates PaymentIntent WITHOUT confirming
-   - Client (Stripe.js) will confirm via confirmCardPayment */
+   – ينشئ PaymentIntent (confirm:false) ويعيد client_secret للواجهة */
 app.post("/create-payment-intent", async (req, res) => {
   try {
     const {
       amount,
-      currency = "usd",
-      description = "Store Purchase",
+      currency     = "usd",
+      description  = "Store Purchase",
       payment_method,
-      name,
-      email,
-      line1,
-      city,
-      postal_code,
-      country
+      name, email, line1, city, postal_code, country
     } = req.body;
 
     if (!payment_method)
@@ -40,20 +35,18 @@ app.post("/create-payment-intent", async (req, res) => {
     const params = {
       amount: Number(amount),
       currency,
-      payment_method_types: ["card"],
+      payment_method_types: ["card"],            // لا يقبل طرق Redirect
       description,
       payment_method,
-      confirmation_method: "manual", // require client confirmation
-      confirm: false,                // don't confirm server‑side
+      confirmation_method: "manual",
+      confirm: false,                            // الـ client سيؤكد
       receipt_email: email,
       payment_method_options: {
-        card: {
-          request_three_d_secure: "automatic"
-        }
+        card: { request_three_d_secure: "automatic" }
       }
     };
 
-    if (line1 && country && name) {
+    if (name && line1 && country) {
       params.shipping = {
         name,
         address: { line1, city, postal_code, country }
@@ -62,13 +55,17 @@ app.post("/create-payment-intent", async (req, res) => {
 
     const intent = await stripe.paymentIntents.create(params);
 
-    res.json({ client_secret: intent.client_secret, id: intent.id, status: intent.status });
+    res.json({
+      id: intent.id,
+      status: intent.status,
+      client_secret: intent.client_secret
+    });
   } catch (err) {
     res.status(400).json({
       message: err.message,
-      type: err.type,
-      code: err.code,
-      decline_code: err.decline_code || null
+      type   : err.type,
+      code   : err.code,
+      decline_code : err.decline_code || null
     });
   }
 });
