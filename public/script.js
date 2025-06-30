@@ -14,7 +14,6 @@ const logFull = (label, val) => {
   if (typeof val === "string") {
     console.log(val);
   } else {
-    // console.dir shows objects deeply with no truncation
     console.dir(val, { depth: null, maxArrayLength: null });
   }
   console.log(`===== END ${label} =====\n`);
@@ -24,7 +23,6 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   out.textContent = "⏳ Creating payment method…";
 
-  // collect billing data
   const fd = new FormData(form);
   const billing = { name: fd.get("name"), email: fd.get("email") };
   const address = {
@@ -34,9 +32,8 @@ form.addEventListener("submit", async (e) => {
     country: fd.get("country")
   };
 
-  /* 1) create PaymentMethod */
   const { paymentMethod, error: pmErr } = await stripe.createPaymentMethod({
-    type: "card", card, billing_details: billing
+    type: "card", card, billing_details: { ...billing, address }
   });
   if (pmErr) {
     logFull("PaymentMethod ERROR", pmErr);
@@ -45,8 +42,14 @@ form.addEventListener("submit", async (e) => {
   }
   logFull("PaymentMethod", paymentMethod);
 
-  /* 2) call backend */
-  const payload = { amount: 100, currency: "usd", description: "Store Purchase", payment_method: paymentMethod.id, ...billing, ...address };
+  const payload = {
+    amount: 100,
+    currency: "usd",
+    description: "Store Purchase",
+    payment_method: paymentMethod.id,
+    ...billing,
+    ...address
+  };
   logFull("Payload to backend", payload);
 
   const res = await fetch("/create-payment-intent", {
@@ -54,26 +57,30 @@ form.addEventListener("submit", async (e) => {
     headers: { "Content-Type": "application/json" },
     body   : JSON.stringify(payload)
   });
+
   const raw = await res.text();
   logFull("Backend RAW response", raw);
 
   let data;
-  try { data = JSON.parse(raw); } catch (e) { data = { parse_error: e.message }; }
+  try {
+    data = JSON.parse(raw);
+  } catch (e) {
+    data = { parse_error: e.message };
+  }
   logFull("Backend Parsed JSON", data);
 
   if (data.error) {
-    out.textContent = "❌ " + (data.message || JSON.stringify(data, null, 2));
+    logFull("Stripe Error Detail", data);
+    out.textContent = "❌ " + (data.error.message || JSON.stringify(data, null, 2));
     return;
   }
 
-  /* 3) handle 3‑D Secure redirect */
   if (data.next_action && data.next_action.type === "redirect_to_url") {
     out.textContent = "🔗 Redirecting for 3‑D Secure…";
     window.location.href = data.next_action.redirect_to_url.url;
     return;
   }
 
-  /* 4) final status / charge outcome */
   const pi = data;
   logFull("Final PaymentIntent", pi);
 
@@ -82,10 +89,11 @@ form.addEventListener("submit", async (e) => {
   const reason = charge?.outcome?.reason         || "none";
   const status = charge?.outcome?.network_status || "unknown";
   const decline_code = charge?.outcome?.risk_level || "n/a";
+  const fullResponse = JSON.stringify(pi, null, 2);
 
   if (pi.status === "succeeded") {
     out.textContent = "✅ Payment succeeded!";
   } else {
-    out.textContent = `❌ Declined: ${seller}\nReason: ${reason}\nStatus: ${status}\nRisk Level: ${decline_code}`;
+    out.textContent = `❌ Declined: ${seller}\nReason: ${reason}\nStatus: ${status}\nRisk Level: ${decline_code}\n\nFull Charge Response:\n${fullResponse}`;
   }
 });
