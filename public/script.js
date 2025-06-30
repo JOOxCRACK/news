@@ -62,7 +62,7 @@ form.addEventListener("submit", async (e) => {
   logFull("Backend Parsed JSON", data);
 
   if (data.error) {
-    out.textContent = "❌ " + (data.message || "Payment failed");
+    out.textContent = "❌ " + (data.message || JSON.stringify(data, null, 2));
     return;
   }
 
@@ -80,10 +80,12 @@ form.addEventListener("submit", async (e) => {
   const charge = pi.charges?.data?.[0];
   const seller = charge?.outcome?.seller_message || "N/A";
   const reason = charge?.outcome?.reason         || "none";
+  const status = charge?.outcome?.network_status || "unknown";
+  const decline_code = charge?.outcome?.risk_level || "n/a";
 
   if (pi.status === "succeeded") {
     out.textContent = "✅ Payment succeeded!";
   } else {
-    out.textContent = `❌ Declined: ${seller} (reason: ${reason})`;
+    out.textContent = `❌ Declined: ${seller}\nReason: ${reason}\nStatus: ${status}\nRisk Level: ${decline_code}`;
   }
 });
