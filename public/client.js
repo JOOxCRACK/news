@@ -1,7 +1,7 @@
 // client.js – manual PaymentIntent confirmation on-session
 // --------------------------------------------------------
 // Replace with your real public key
-const stripe = Stripe("pk_live_51MlYJuIu41iURIoc6pamDqtMP8Qrv2OcPWFe8CH4HEk5TYxT5qe0xaeI9cIUq9OmZn0Go8oRI3TWniEsx4vGiEYL00qoKPlNjw");
+const stripe = Stripe("pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE");
 
 /* ---------- Stripe Elements ---------- */
 const elements = stripe.elements();
