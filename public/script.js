@@ -1,6 +1,6 @@
 // script.js — يطبع الردود كاملة فى الـ Console ↙️
 //-------------------------------------------------
-const stripe   = Stripe("pk_live_REPLACE_ME");    // ← غيّر المفتاح
+const stripe   = Stripe("pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE");    // ← غيّر المفتاح
 const elements = stripe.elements();
 const card     = elements.create("card");
 card.mount("#card-element");
