@@ -1,66 +1,79 @@
-// script.js — يطبع الردود كاملة فى الـ Console ↙️
-//-------------------------------------------------
-const stripe   = Stripe("pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE");    // ← غيّر المفتاح
-const elements = stripe.elements();
-const card     = elements.create("card");
-card.mount("#card-element");
+// server.js – create & auto‑confirm PaymentIntent فى الخلفية
+//------------------------------------------------------------
+const express    = require("express");
+const bodyParser = require("body-parser");
+const path       = require("path");
 
-const form = document.getElementById("payment-form");
-const out  = document.getElementById("result");
+// مفتاحك السرّى يقرأ من متغيّر البيئة STRIPE_SECRET_KEY
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY, {
+  maxNetworkRetries: 2,
+  timeout: 30000
+});
 
-/* helper: طباعة مرتّبة فى الـ Console */
-const logFull = (label, obj) =>
-  console.log(`🟢 ${label}:`, JSON.parse(JSON.stringify(obj, null, 2)));
+const app = express();
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  out.textContent = "⏳ Creating payment-method…";
+// صفحة البداية
+app.get("/", (_, res) =>
+  res.sendFile(path.join(__dirname, "public", "index.html"))
+);
 
-  /* ⇢ 1) PaymentMethod */
-  const fd = new FormData(form);
-  const billing = { name: fd.get("name"), email: fd.get("email") };
-  const { paymentMethod, error: pmErr } = await stripe.createPaymentMethod({
-    type: "card", card, billing_details: billing
-  });
+/* POST /create-payment-intent
+   – ينشئ PaymentIntent ويؤكِّده فورًا (confirm:true + automatic)
+   – يرجّع status و next_action (لو 3‑D Secure مطلوب) */
+app.post("/create-payment-intent", async (req, res) => {
+  try {
+    const {
+      amount,
+      currency = "usd",
+      description = "Store Purchase",
+      payment_method,
+      name, email,
+      line1, city, postal_code, country
+    } = req.body;
 
-  if (pmErr) { out.textContent = "❌ "+pmErr.message; return; }
-  logFull("PaymentMethod", paymentMethod);
+    if (!payment_method)
+      return res.status(400).json({ error: "payment_method missing" });
 
-  /* ⇢ 2) Backend - create & confirm PI */
-  const payload = {
-    amount : 100,
-    payment_method: paymentMethod.id,
-    ...Object.fromEntries(fd.entries())   // يمرر كل الحقول للسيرفر
-  };
+    const params = {
+      amount: Number(amount),
+      currency,
+      payment_method_types: ["card"],
+      description,
+      payment_method,
+      confirmation_method: "automatic",
+      confirm: true,                       // يتم التأكيد فى السيرفر
+      receipt_email: email,
+      payment_method_options: {
+        card: { request_three_d_secure: "automatic" }
+      }
+    };
 
-  const res  = await fetch("/create-payment-intent", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(payload)
-  });
-  const data = await res.json();
-  logFull("Backend Response", data);
+    if (name && line1 && country) {
+      params.shipping = {
+        name,
+        address: { line1, city, postal_code, country }
+      };
+    }
 
-  if (data.error) { out.textContent = "❌ "+data.error; return; }
+    const intent = await stripe.paymentIntents.create(params);
 
-  /* ⇢ 3) لو Stripe احتاج redirect (3-D Secure) */
-  if (data.next_action && data.next_action.type === "redirect_to_url") {
-    out.textContent = "🔗 Redirecting for 3-D Secure…";
-    window.location = data.next_action.redirect_to_url.url;
-    return;
-  }
-
-  /* ⇢ 4) النتيجة (success/decline) */
-  const pi = data;                       // backend يرجّع الـ PI المؤكد
-  const charge = pi.charges?.data?.[0];  // أول عملية خصم
-  const sellerMsg = charge?.outcome?.seller_message || "N/A";
-  const reason    = charge?.outcome?.reason         || "none";
-
-  logFull("Final PaymentIntent", pi);
-
-  if (pi.status === "succeeded") {
-    out.textContent = "✅ Payment succeeded!";
-  } else {
-    out.textContent = `❌ Declined: ${sellerMsg} (reason: ${reason})`;
+    res.json({
+      id            : intent.id,
+      status        : intent.status,
+      client_secret : intent.client_secret,
+      next_action   : intent.next_action || null // لو فيه 3‑D Secure
+    });
+  } catch (err) {
+    res.status(400).json({
+      message      : err.message,
+      type         : err.type,
+      code         : err.code,
+      decline_code : err.decline_code || null
+    });
   }
 });
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log("✅ Server listening on", PORT));
