@@ -1,5 +1,5 @@
-// server.js – automatic confirmation for PaymentIntent (no 3D Secure redirect)
-// ----------------------------------------------------------------
+// server.js – manual creation, client-side confirmation (Stripe JS)
+//---------------------------------------------------------------
 const express    = require("express");
 const bodyParser = require("body-parser");
 const path       = require("path");
@@ -13,9 +13,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+// home page
 app.get("/", (_, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
-/* Create and immediately confirm PaymentIntent */
+/* POST /create-payment-intent
+   - Creates PaymentIntent WITHOUT confirming
+   - Client (Stripe.js) will confirm via confirmCardPayment */
 app.post("/create-payment-intent", async (req, res) => {
   try {
     const {
@@ -31,49 +34,41 @@ app.post("/create-payment-intent", async (req, res) => {
       country
     } = req.body;
 
-    if (!payment_method) return res.status(400).json({ error: "payment_method missing" });
+    if (!payment_method)
+      return res.status(400).json({ error: "payment_method missing" });
 
-    const intent = await stripe.paymentIntents.create({
+    const params = {
       amount: Number(amount),
       currency,
       payment_method_types: ["card"],
       description,
       payment_method,
-      confirmation_method: "automatic",
-      confirm: true,
+      confirmation_method: "manual", // require client confirmation
+      confirm: false,                // don't confirm server‑side
       receipt_email: email,
-      ...(line1 && country && name) && {
-        shipping: {
-          name,
-          address: {
-            line1,
-            city,
-            postal_code,
-            country
-          }
-        }
-      },
       payment_method_options: {
         card: {
-          request_three_d_secure: "automatic" // only if issuer requires
+          request_three_d_secure: "automatic"
         }
       }
-      }
-    });
+    };
 
-    res.json({
-      id: intent.id,
-      status: intent.status,
-      client_secret: intent.client_secret,
-      next_action: intent.next_action || null
-    });
+    if (line1 && country && name) {
+      params.shipping = {
+        name,
+        address: { line1, city, postal_code, country }
+      };
+    }
+
+    const intent = await stripe.paymentIntents.create(params);
+
+    res.json({ client_secret: intent.client_secret, id: intent.id, status: intent.status });
   } catch (err) {
     res.status(400).json({
       message: err.message,
       type: err.type,
       code: err.code,
-      decline_code: err.decline_code || null,
-      payment_intent: err.payment_intent || null
+      decline_code: err.decline_code || null
     });
   }
 });
