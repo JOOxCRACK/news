@@ -1,82 +1,61 @@
-// client.js – manual PaymentIntent confirmation on-session
-// --------------------------------------------------------
-// Replace with your real public key
-const stripe = Stripe("pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE");
-
-/* ---------- Stripe Elements ---------- */
+// public/script.js
+const stripe = Stripe("pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE"); // ضع مفتاحك هنا
 const elements = stripe.elements();
-const card = elements.create("card", { classes: { base: "p-2" } });
-card.mount("#card-element");
+const cardElement = elements.create("card");
+cardElement.mount("#card-element");
 
-/* ---------- UI helpers ---------- */
-const form   = document.getElementById("payment-form");
-const result = document.getElementById("payment-result");
-const button = document.getElementById("card-button");
-const ui = {
-  log : (t)=> result.textContent = t,
-  lock: ()=> button.disabled = true,
-  free: ()=> button.disabled = false
-};
+const form = document.getElementById("payment-form");
+const result = document.getElementById("result");
 
-form.addEventListener("submit", async e => {
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  ui.lock(); ui.log("⏳ Creating PaymentMethod…");
 
-  /* 1) Create PaymentMethod with billing details */
-  const billing = {
-    name  : document.getElementById("cardholder-name").value,
-    email : document.getElementById("email").value,
-    address:{
-      line1      : document.getElementById("address-line1").value,
-      city       : document.getElementById("city").value,
-      postal_code: document.getElementById("postal_code").value,
-      country    : document.getElementById("country").value
-    }
-  };
+  const formData = new FormData(form);
+  const name = formData.get("name");
+  const email = formData.get("email");
+  const line1 = formData.get("line1");
+  const city = formData.get("city");
+  const postal_code = formData.get("postal_code");
+  const country = formData.get("country");
 
-  const { error:pmErr, paymentMethod } = await stripe.createPaymentMethod({
-    type:"card", card, billing_details: billing
-  });
-  if (pmErr){ ui.log("❌ "+pmErr.message); ui.free(); return; }
-
-  ui.log("⏳ Creating PaymentIntent…");
-
-  /* 2) Ask backend to create PaymentIntent (confirm:false) */
-  const body = new URLSearchParams({
-    payment_method: paymentMethod.id,
-    amount        : 100,         // 1 USD
-    currency      : "usd",
-    description   : "Store Purchase",
-    ...billing
+  const { paymentMethod, error } = await stripe.createPaymentMethod({
+    type: "card",
+    card: cardElement,
+    billing_details: { name, email }
   });
 
-  const res  = await fetch("/create-payment-intent", {
-    method:"POST",
-    headers:{ "Content-Type":"application/x-www-form-urlencoded" },
-    body: body.toString()
-  });
-  const raw  = await res.text();
-  console.log("--- PI CREATE Response ---\n"+raw);
-  const pi   = JSON.parse(raw);
-  console.dir(pi, {depth:null});
-
-  if (!pi.client_secret){
-    ui.log("❌ "+(pi.message || "Failed to create PI"));
-    ui.free(); return;
+  if (error) {
+    result.textContent = "❌ Error creating payment method: " + error.message;
+    return;
   }
 
-  ui.log("🔄 Confirming PaymentIntent…");
-  /* 3) Confirm on-session (opens 3-D Secure if required) */
-  const { error, paymentIntent } = await stripe.confirmCardPayment(pi.client_secret);
+  const res = await fetch("/create-payment-intent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      amount: 100,
+      description: "Store Purchase",
+      payment_method: paymentMethod.id,
+      name,
+      email,
+      line1,
+      city,
+      postal_code,
+      country
+    })
+  });
 
-  if (error){
-    ui.log("❌ "+error.message);
-    console.dir(error, {depth:null});
+  const data = await res.json();
+
+  if (data.error) {
+    result.textContent = "❌ Error: " + JSON.stringify(data, null, 2);
+    return;
+  }
+
+  const confirm = await stripe.confirmCardPayment(data.client_secret);
+  if (confirm.error) {
+    result.textContent = "❌ Confirmation error: " + confirm.error.message;
   } else {
-    ui.log(paymentIntent.status === "succeeded"
-           ? "✅ Payment succeeded!"
-           : `ℹ️ Status: ${paymentIntent.status}`);
-    console.dir(paymentIntent, {depth:null});
+    result.textContent = "✅ Payment successful! Status: " + confirm.paymentIntent.status;
   }
-  ui.free();
 });
