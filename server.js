@@ -42,13 +42,15 @@ app.post("/create-payment-intent", async (req, res) => {
       confirmation_method: "automatic",
       confirm: true,
       receipt_email: email,
-      shipping: {
-        name,
-        address: {
-          line1,
-          city,
-          postal_code,
-          country
+      ...(line1 && country && name) && {
+        shipping: {
+          name,
+          address: {
+            line1,
+            city,
+            postal_code,
+            country
+          }
         }
       },
       payment_method_options: {
