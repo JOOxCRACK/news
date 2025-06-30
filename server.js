@@ -18,7 +18,7 @@ app.post("/create-setup-intent", async (req, res) => {
     const setupIntent = await stripe.setupIntents.create({
       customer: customer.id,
       payment_method_types: ["card"],
-      usage: "off_session"
+      usage: "on_session"
     });
 
     console.dir(setupIntent, { depth: null });
