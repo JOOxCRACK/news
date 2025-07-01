@@ -3,40 +3,50 @@ const stripe = Stripe(
 );
 
 const elements = stripe.elements();
-const card = elements.create('card');
+const card     = elements.create('card');
 card.mount('#card-element');
 
-const form       = document.getElementById('payment-form');
-const resultBox  = document.getElementById('result');
-const payButton  = form.querySelector('button');
+const form      = document.getElementById('payment-form');
+const resultBox = document.getElementById('result');
+const button    = form.querySelector('button');
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   resultBox.textContent = '';
-  payButton.disabled = true;
+  button.disabled = true;
 
-  // 1) إنشاء Token
-  const { token, error } = await stripe.createToken(card);
+  // Gather billing details from form
+  const billing = {
+    name:   document.getElementById('name').value,
+    address_line1: document.getElementById('line1').value,
+    address_city:  document.getElementById('city').value,
+    address_state: document.getElementById('state').value,
+    address_zip:   document.getElementById('zip').value,
+    address_country: document.getElementById('country').value
+  };
+  const email = document.getElementById('email').value;
+
+  // 1) Create token with billing details
+  const { token, error } = await stripe.createToken(card, billing);
   if (error) {
     resultBox.textContent = `Token error: ${error.message}`;
-    payButton.disabled = false;
+    button.disabled = false;
     return;
   }
 
-  // 2) إرسال Token للسيرفر
+  // 2) Send token & email to backend
   try {
     const res = await fetch('/create-charge', {
       method : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify({ tokenId: token.id })
+      body   : JSON.stringify({ tokenId: token.id, email })
     });
-
     const data = await res.json();
     resultBox.textContent = JSON.stringify(data, null, 2);
-
-  } catch (fetchErr) {
-    resultBox.textContent = `Network error: ${fetchErr.message}`;
+  } catch (err) {
+    resultBox.textContent = `Network error: ${err.message}`;
   } finally {
-    payButton.disabled = false;
+    button.disabled = false;
   }
 });
+
