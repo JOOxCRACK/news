@@ -3,19 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Stripe $2 Charge Demo</title>
+  <title>Pay $2 Demo</title>
   <script src="https://js.stripe.com/v3"></script>
   <style>
-    body   { font-family: sans-serif; max-width: 400px; margin: 40px auto; }
-    button { margin-top: 16px; width: 100%; padding: 12px; }
+    body { font-family:sans-serif; max-width:420px; margin:40px auto; }
+    label { display:block; margin:6px 0 2px; }
+    input  { width:100%; padding:8px; margin-bottom:8px; }
+    button { width:100%; padding:12px; margin-top:10px; }
+    #result { white-space:pre-wrap; font-size:0.85rem; background:#f7f7f7; padding:8px; }
   </style>
 </head>
 <body>
   <h2>Pay $2</h2>
+
   <form id="payment-form">
-    <div id="card-element"></div>
-    <button type="submit">Pay</button>
+    <label>Name</label>
+    <input id="name"   placeholder="Jane Doe" required />
+
+    <label>Email</label>
+    <input id="email"  type="email" placeholder="jane@example.com" required />
+
+    <label>Address line 1</label>
+    <input id="line1"  placeholder="123 Main St" required />
+
+    <label>City</label>
+    <input id="city"   placeholder="New York" required />
+
+    <label>State</label>
+    <input id="state"  placeholder="NY" required />
+
+    <label>ZIP / Post code</label>
+    <input id="zip"    placeholder="10001" required />
+
+    <label>Country (2-letter code)</label>
+    <input id="country" placeholder="US" required />
+
+    <label>Card details</label>
+    <div id="card-element" style="padding:8px 0;"></div>
+
+    <button type="submit">Pay $2</button>
   </form>
+
+  <h4>Response</h4>
   <pre id="result"></pre>
 
   <script type="module" src="./client.js"></script>
