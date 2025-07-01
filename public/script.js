@@ -18,7 +18,7 @@ const logFull = (label, val) => {
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  out.textContent = "⏳ Creating SetupIntent…";
+  out.textContent = "⏳ Creating PaymentMethod…";
 
   const fd = new FormData(form);
   const billing = { name: fd.get("name"), email: fd.get("email") };
@@ -29,33 +29,34 @@ form.addEventListener("submit", async (e) => {
     country: fd.get("country")
   };
 
-  /* 1) طلب SetupIntent من السيرفر */
-  const siRes = await fetch("/create-setup-intent", {
-    method : "POST",
+  /* 1) إنشاء PaymentMethod */
+  const { paymentMethod, error: pmError } = await stripe.createPaymentMethod({
+    type: "card",
+    card,
+    billing_details: { ...billing, address }
+  });
+
+  if (pmError) {
+    logFull("PaymentMethod ERROR", pmError);
+    out.textContent = "❌ " + pmError.message;
+    return;
+  }
+
+  logFull("PaymentMethod SUCCESS", paymentMethod);
+
+  /* 2) إرسال الـ PaymentMethod إلى السيرفر */
+  out.textContent = "⏳ Sending PaymentMethod to server…";
+  const res = await fetch("/pay", {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body   : JSON.stringify({ email: billing.email })
+    body: JSON.stringify({ payment_method: paymentMethod.id })
   });
-  const siData = await siRes.json();
-  logFull("SetupIntent response (server)", siData);
-  if (!siData.client_secret) {
-    out.textContent = "❌ Failed to create SetupIntent";
-    return;
+  const resData = await res.json();
+  logFull("Server Response", resData);
+
+  if (resData.error) {
+    out.textContent = "❌ " + resData.error.message;
+  } else {
+    out.textContent = `✅ Payment ${resData.status}`;
   }
-
-  /* 2) confirmCardSetup */
-  const { setupIntent, error } = await stripe.confirmCardSetup(siData.client_secret, {
-    payment_method: {
-      card,
-      billing_details: { ...billing, address }
-    }
-  });
-
-  if (error) {
-    logFull("SetupIntent ERROR", error);
-    out.textContent = "❌ " + error.message;
-    return;
-  }
-
-  logFull("SetupIntent SUCCESS", setupIntent);
-  out.textContent = `✅ Card saved! payment_method id → ${setupIntent.payment_method}`;
 });
