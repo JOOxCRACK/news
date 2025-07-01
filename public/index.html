@@ -1,43 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Secure Payment</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://js.stripe.com/v3/"></script>
-  <style>
-    body{font-family:Segoe UI,Arial,sans-serif;background:#f2f4f8;
-         margin:0;display:flex;justify-content:center;align-items:center;height:100vh;}
-    .box{background:#fff;padding:30px;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.1);
-         width:100%;max-width:400px}
-    h2{margin:0 0 20px;text-align:center;color:#333}
-    input,#card-element,button{width:100%;padding:12px;margin-top:8px;border-radius:6px;
-         border:1px solid #ccc;font-size:16px;box-sizing:border-box}
-    #card-element{border:1px solid #ccc}
-    button{background:#635bff;color:#fff;border:none;cursor:pointer;transition:.3s}
-    button:hover{background:#5347dc}
-    #result{margin-top:10px;background:#f6f6f6;padding:10px;border-radius:6px;font-size:14px}
-  </style>
-</head>
-<body>
-  <div class="box">
-    <h2>Complete Your Payment</h2>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Secure Payment</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h2>Checkout</h2>
 
+    <!-- Stripe Payment Element سيُرَكَّب هنا -->
     <form id="payment-form">
-      <input name="name"         placeholder="Full Name"        required>
-      <input name="email"        placeholder="Email Address"    required>
-      <input name="line1"        placeholder="Address Line"     required>
-      <input name="city"         placeholder="City"             required>
-      <input name="postal_code"  placeholder="Postal Code"      required>
-      <input name="country"      placeholder="Country (e.g. US)"required>
-      <div id="card-element"></div>
-      <button type="submit">Pay Now</button>
+      <div id="payment-element"></div>
+      <button id="pay-btn" type="button">Pay</button>
     </form>
 
-    <div id="result"></div>
-  </div>
-
-  <!-- ربط كود العميل -->
-  <script src="/script.js"></script>
-</body>
+    <script type="module" src="./client.js"></script>
+  </body>
 </html>
