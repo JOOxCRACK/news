@@ -10,30 +10,36 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-04-
 const app = express();
 app.use(express.json());
 
+// serve static files
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname  = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Create charge
+// POST /create-charge  → يشحن 2$
 app.post('/create-charge', async (req, res) => {
   try {
-    const { tokenId, amount, currency = 'usd' } = req.body;
+    const { tokenId, currency = 'usd' } = req.body;
     if (!tokenId) return res.status(400).json({ error: 'Missing tokenId' });
 
     const charge = await stripe.charges.create({
-      amount,
+      amount: 200,              // 2.00 USD
       currency,
       source: tokenId,
-      description: 'Demo charge from /create-charge',
+      description: 'Demo $2 charge'
     });
 
+    // تحقّق من مستوى المخاطرة
     const risk = charge.outcome?.risk_level;
     if (risk === 'highest') {
       await stripe.refunds.create({ charge: charge.id });
-      return res.status(402).json({ error: 'High-risk transaction – refunded automatically.' });
+      return res.status(402).json({
+        error: 'High-risk transaction – refunded automatically.',
+        charge
+      });
     }
 
-    res.json({ chargeId: charge.id, status: charge.status, risk });
+    // أعد كائن الـ Charge كامل
+    res.json(charge);
   } catch (err) {
     console.error('Stripe error:', err);
     res.status(500).json({ error: err.message });
