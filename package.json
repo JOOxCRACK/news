@@ -1,14 +1,14 @@
 {
-  "name": "stripe-proxy-server",
+  "name": "stripe-app",
   "version": "1.0.0",
+  "type": "module",              // ← يسمح باستخدام import
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.0",
-    "body-parser": "^1.20.2",
-    "stripe": "^14.0.0",
-    "https-proxy-agent": "^7.0.2"
+    "express": "^4.19.2",
+    "stripe": "^14.22.0",
+    "dotenv": "^16.4.5"
   }
 }
