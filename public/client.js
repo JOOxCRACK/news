@@ -1,35 +1,31 @@
-// public/client.js
-const stripe = Stripe(import.meta.env
-  ? import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY          // لو بتستخدم أدوات Build مثل Vite
-  : 'pk_live_*********************');                    // أو اكتب المفتاح مباشرةً مؤقتًا
+const stripe = Stripe('pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE');
 
-const form      = document.getElementById('payment-form');
-const payBtn    = document.getElementById('pay-btn');
-let elements;   // سننشئه بعد الحصول على clientSecret
+const payBtn = document.getElementById('pay-btn');
+let elements;
 
-// ── الخطوة 1: اطلب clientSecret من خادمك ────────────────
+// 1) جلب clientSecret من الخادم
 (async () => {
   const res = await fetch('/create-payment-intent', {
     method : 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body   : JSON.stringify({ amount: 1000 }) // ← 10 دولار
+    body   : JSON.stringify({ amount: 1000 }) // 10 دولار
   });
+
+  if (!res.ok) { alert('Server error'); return; }
+
   const { clientSecret } = await res.json();
 
-  // ── الخطوة 2: أنشئ Payment Element ───────────────────
+  // 2) تركيب Payment Element
   elements = stripe.elements({ clientSecret });
-  const paymentElement = elements.create('payment');
-  paymentElement.mount('#payment-element');
+  elements.create('payment').mount('#payment-element');
 })();
 
-// ── الخطوة 3: عند الضغط على Pay ─────────────────────────
+// 3) تأكيد الدفع عند الضغط
 payBtn.addEventListener('click', async () => {
   payBtn.disabled = true;
   const { error } = await stripe.confirmPayment({
     elements,
-    confirmParams: {
-      return_url: window.location.origin + '/success.html'
-    }
+    confirmParams: { return_url: window.location.origin + '/success.html' }
   });
 
   if (error) {
