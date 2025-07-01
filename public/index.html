@@ -2,21 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Secure Payment</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Stripe.js -->
+    <title>Secure Payment</title>
     <script src="https://js.stripe.com/v3"></script>
-    <link rel="stylesheet" href="style.css" />
+    <style>
+      body   { font-family: sans-serif; max-width: 400px; margin: 40px auto; }
+      button { margin-top: 16px; width: 100%; padding: 12px; }
+    </style>
   </head>
   <body>
     <h2>Checkout</h2>
-
-    <!-- Stripe Payment Element سيُرَكَّب هنا -->
     <form id="payment-form">
       <div id="payment-element"></div>
       <button id="pay-btn" type="button">Pay</button>
     </form>
-
     <script type="module" src="./client.js"></script>
   </body>
 </html>
