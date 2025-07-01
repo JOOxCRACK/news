@@ -1,35 +1,28 @@
 const stripe = Stripe('pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE');
 
-const payBtn = document.getElementById('pay-btn');
-let elements;
+const elements = stripe.elements();
+const card = elements.create('card');
+card.mount('#card-element');
 
-// 1) جلب clientSecret من الخادم
-(async () => {
-  const res = await fetch('/create-payment-intent', {
-    method : 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body   : JSON.stringify({ amount: 1000 }) // 10 دولار
-  });
+const form = document.getElementById('payment-form');
+const resultBox = document.getElementById('result');
 
-  if (!res.ok) { alert('Server error'); return; }
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  resultBox.textContent = 'Processing...';
 
-  const { clientSecret } = await res.json();
-
-  // 2) تركيب Payment Element
-  elements = stripe.elements({ clientSecret });
-  elements.create('payment').mount('#payment-element');
-})();
-
-// 3) تأكيد الدفع عند الضغط
-payBtn.addEventListener('click', async () => {
-  payBtn.disabled = true;
-  const { error } = await stripe.confirmPayment({
-    elements,
-    confirmParams: { return_url: window.location.origin + '/success.html' }
-  });
-
+  const { token, error } = await stripe.createToken(card);
   if (error) {
-    alert(error.message);
-    payBtn.disabled = false;
+    resultBox.textContent = error.message;
+    return;
   }
+
+  const res = await fetch('/create-charge', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tokenId: token.id, amount: 1000 })
+  });
+
+  const data = await res.json();
+  resultBox.textContent = JSON.stringify(data, null, 2);
 });
