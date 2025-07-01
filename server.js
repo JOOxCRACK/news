@@ -1,33 +1,41 @@
-// server.js — Save card with SetupIntent (using dotenv, full logging)
-//------------------------------------------------------------
-const express = require("express");
-const app = express();
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+// server.js
+import express from 'express';
+import Stripe from 'stripe';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-app.use(express.static("public"));
+// ── الإعدادات ───────────────────────────────────────────
+dotenv.config();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2024-04-10',
+});
+const app = express();
 app.use(express.json());
 
-app.post("/create-setup-intent", async (req, res) => {
+// خدمة الملفات الستاتيكية داخل مجلد ‎/public
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ── API: إنشاء PaymentIntent ───────────────────────────
+app.post('/create-payment-intent', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { amount, currency = 'usd' } = req.body;
 
-    const customer = await stripe.customers.create({
-      email
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,                   // بالمئات: 10.00 USD → 1000
+      currency,
+      automatic_payment_methods: { enabled: true },
     });
 
-    const setupIntent = await stripe.setupIntents.create({
-      customer: customer.id,
-      payment_method_types: ["card"],
-      usage: "on_session"
-    });
-
-    console.dir(setupIntent, { depth: null });
-    res.send({ client_secret: setupIntent.client_secret });
+    res.json({ clientSecret: paymentIntent.client_secret });
   } catch (err) {
-    console.dir(err, { depth: null });
-    res.status(500).send({ error: err.message });
+    console.error('Stripe error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// ── تشغيل الخادم ───────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
