@@ -9,20 +9,18 @@ const resultBox = document.getElementById('result');
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  resultBox.textContent = 'Processing...';
+  resultBox.textContent = 'Processing…';
 
+  // 1) توليد Token
   const { token, error } = await stripe.createToken(card);
-  if (error) {
-    resultBox.textContent = error.message;
-    return;
-  }
+  if (error) { resultBox.textContent = error.message; return; }
 
-  const res = await fetch('/create-charge', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tokenId: token.id, amount: 1000 })
+  // 2) إرسال التوكن للسيرفر لإنشاء Charge بقيمة 2$
+  const res  = await fetch('/create-charge', {
+    method : 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body   : JSON.stringify({ tokenId: token.id })
   });
-
   const data = await res.json();
   resultBox.textContent = JSON.stringify(data, null, 2);
 });
