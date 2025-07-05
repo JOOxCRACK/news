@@ -1,28 +1,93 @@
-<form id="payment-form">
-  <label>Name</label>
-  <input id="name" placeholder="Jane Doe" required />
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pay $2 Demo – Embedded Card</title>
+  <script src="https://js.stripe.com/v3"></script>
 
-  <label>Email</label>
-  <input id="email" type="email" placeholder="jane@example.com" required />
+  <style>
+    :root { --border:#d0d7de; --radius:6px; }
+    *{box-sizing:border-box;font-family:sans-serif}
+    body   { max-width:480px;margin:40px auto;padding:0 12px }
+    label  { display:block;font-weight:600;margin:12px 0 4px }
+    input, .stripe-box{
+      width:100%;padding:10px 12px;font-size:15px;
+      border:1px solid var(--border);border-radius:var(--radius);
+      background:#fff
+    }
+    .field-row{display:flex;gap:8px}
+    .field-row>*{flex:1}
+    button{
+      width:100%;margin-top:18px;padding:12px;
+      font-size:16px;border:0;border-radius:var(--radius);
+      background:#0a66ff;color:#fff;cursor:pointer
+    }
+    button:disabled{opacity:.5;cursor:not-allowed}
+    #result{white-space:pre-wrap;background:#f5f7f9;border:1px solid var(--border);
+      padding:10px;border-radius:var(--radius);font-size:.85rem;margin-top:14px}
+    /* صندوق مدمج للعنوان + البطاقة */
+    .group-box{
+      border:1px solid var(--border);border-radius:var(--radius);padding:16px
+    }
+    .group-box legend{
+      padding:0 6px;font-size:14px;font-weight:600;color:#555
+    }
+    /* Stripe card element inherits same look */
+    .StripeElement{
+      padding:10px 0
+    }
+  </style>
+</head>
+<body>
+  <h2>Pay $2</h2>
 
-  <label>Address line 1</label>
-  <input id="line1" placeholder="123 Main St" required />
+  <form id="payment-form">
+    <label>Name</label>
+    <input id="name" placeholder="Jane Doe" required />
 
-  <label>City</label>
-  <input id="city" placeholder="New York" required />
+    <label>Email</label>
+    <input id="email" type="email" placeholder="jane@example.com" required />
 
-  <label>State</label>
-  <input id="state" placeholder="NY" required />
+    <!-- ⭐ صندوق مشترك للعنوان + البطاقة ⭐ -->
+    <fieldset class="group-box">
+      <legend>Billing address & card</legend>
 
-  <label>ZIP / Post code</label>
-  <input id="zip" placeholder="10001" required />
+      <label>Address line 1</label>
+      <input id="line1" placeholder="123 Main St" required />
 
-  <label>Country (2-letter code)</label>
-  <input id="country" placeholder="US" required />
+      <div class="field-row">
+        <div>
+          <label>City</label>
+          <input id="city" placeholder="New York" required />
+        </div>
+        <div>
+          <label>State</label>
+          <input id="state" placeholder="NY" required />
+        </div>
+      </div>
 
- <!-- خانة البطاقة (Stripe Element) -->
-<label>Card Information</label>
-<div id="card-element" style="padding: 10px; border: 1px solid #ccc; border-radius: 5px;"></div>
+      <div class="field-row">
+        <div>
+          <label>ZIP</label>
+          <input id="zip" placeholder="10001" required />
+        </div>
+        <div>
+          <label>Country</label>
+          <input id="country" placeholder="US" required />
+        </div>
+      </div>
 
-  <button type="submit">Pay $2</button>
-</form>
+      <label>Card information</label>
+      <div id="card-element" class="stripe-box"></div>
+    </fieldset>
+
+    <button type="submit">Pay $2</button>
+  </form>
+
+  <h4>Response</h4>
+  <pre id="result"></pre>
+
+  <script type="module" src="./client.js"></script>
+</body>
+</html>
