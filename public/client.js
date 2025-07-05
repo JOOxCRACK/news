@@ -1,21 +1,18 @@
-/* ============================
-   Stripe initialisation
-   ============================ */
+/* ---------- Stripe init ---------- */
 const stripe = Stripe(
   'pk_live_51PvfyTLeu8I62P1q8Z9yBnULxSB028krKqvecohGtnJdOAGxFRnawRSuLtuj0wndH539bLciwUXUMyj1NA5J0l9d00vfqBBVbE'
 );
-
-/* ---------- Elements ---------- */
 const elements = stripe.elements();
+
+/* ---------- Card element ---------- */
 const card = elements.create('card', {
   style: {
     base: {
-      fontSize: '16px',
-      color: '#32325d',
-      fontFamily: 'inherit',
-      '::placeholder': { color: '#aab7c4' }
+      fontSize: '15px',
+      color: '#333',
+      '::placeholder': { color: '#9ca3af' }
     },
-    invalid: { color: '#fa755a' }
+    invalid: { color: '#e11d48' }
   }
 });
 card.mount('#card-element');
@@ -25,46 +22,42 @@ const form      = document.getElementById('payment-form');
 const resultBox = document.getElementById('result');
 const button    = form.querySelector('button');
 
-/* ============================
-   Handle submit
-   ============================ */
+/* ---------- Submit handler ---------- */
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   resultBox.textContent = '';
   button.disabled = true;
 
-  /* Gather billing details from the form */
+  /* collect billing details */
   const billingDetails = {
-    name:            form.querySelector('#name').value,
-    address_line1:   form.querySelector('#line1').value,
-    address_city:    form.querySelector('#city').value,
-    address_state:   form.querySelector('#state').value,
-    address_zip:     form.querySelector('#zip').value,
-    address_country: form.querySelector('#country').value
+    name:            form.line1.form.name.value,
+    address_line1:   form.line1.value,
+    address_city:    form.city.value,
+    address_state:   form.state.value,
+    address_zip:     form.zip.value,
+    address_country: form.country.value
   };
-  const email = form.querySelector('#email').value;
+  const email = form.email.value;
 
-  /* 1) Create Stripe token with billing details */
+  /* 1) create token */
   const { token, error } = await stripe.createToken(card, billingDetails);
-
   if (error) {
     resultBox.textContent = `❌ Token error: ${error.message}`;
     button.disabled = false;
     return;
   }
 
-  /* 2) Send token & email to backend for a $2 charge */
+  /* 2) send to backend */
   try {
-    const response = await fetch('/create-charge', {
+    const res = await fetch('/create-charge', {
       method : 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type':'application/json' },
       body   : JSON.stringify({ tokenId: token.id, email })
     });
-
-    const data = await response.json();
+    const data = await res.json();
     resultBox.textContent = JSON.stringify(data, null, 2);
-  } catch (networkErr) {
-    resultBox.textContent = `🌐 Network error: ${networkErr.message}`;
+  } catch (err) {
+    resultBox.textContent = `🌐 Network error: ${err.message}`;
   } finally {
     button.disabled = false;
   }
